@@ -1,0 +1,64 @@
+from osgeo import ogr
+import rasterio
+import owslib
+ogr.DontUseExceptions()
+
+class BDGExClient():
+    def __init__(self):
+        self.ms_servers={ 
+            "25000": "http://bdgex.eb.mil.br/ms25"
+            }
+        self.metadata_servers = {
+            "csw": "http://bdgex.eb.mil.br/csw"
+            }
+    
+    """Returns the OGC map servers registered (WMS,WFS,WCS)"""
+    def get_map_servers(self):
+        return self.ms_servers
+    
+    def get_metadata_servers(self):
+        return self.metadata_servers
+    
+    def get_vectors_from_wfs(self, xmin, xmax, ymin, ymax):
+        gpkg = None
+        return gpkg
+    
+    def get_wfs_layers_list(self, wfs_server_url):
+        wfs_ds = ogr.Open(f"WFS:{wfs_server_url}")
+        layers_list=[]
+        if not wfs_ds:
+            raise RuntimeError("Failed to connect to WFS service")
+        # Iterate over each layer
+        for i in range(wfs_ds.GetLayerCount()):
+            layer = wfs_ds.GetLayerByIndex(i)
+            layer_name = layer.GetName()
+            layers_list.append(layer_name)
+        return layers_list
+    
+    def get_area_from_wfs(self, wfs_server_url, layer_name, minx, miny, maxx, maxy, output_gpkg='new.gpkg'):
+        wfs_ds = ogr.Open(f"WFS:{wfs_server_url}")
+        if not wfs_ds:
+            raise RuntimeError("Failed to connect to WFS service")
+        
+        layer = wfs_ds.GetLayerByName(layer_name)
+        bbox_geom = ogr.CreateGeometryFromWkt(f"POLYGON (({minx} {miny}, {minx} {maxy}, {maxx} {maxy}, {maxx} {miny}, {minx} {miny}))")
+        layer.SetSpatialFilter(bbox_geom)
+        driver = ogr.GetDriverByName('GPKG')
+        dst_ds = driver.CreateDataSource(output_gpkg)
+        copied_layer = dst_ds.CopyLayer(layer, layer_name)
+
+        if copied_layer is None:
+            raise RuntimeError("Layer copy failed")
+        else:
+            print("Layer copied successfully.")
+        
+    
+if __name__=="__main__":
+    test_client = BDGExClient()
+    wfs_servers = test_client.get_map_servers()
+    print(wfs_servers.keys())
+    wfs_url = wfs_servers['25000']
+    #print(test_client.get_wfs_layers_list(wfs_url))
+    layer_name = "ms:Trecho_Rodoviario_L"
+    minx, miny, maxx, maxy = (-13.01501,-38.53930, -12.95526,-38.50039)
+    test_client.get_area_from_wfs(wfs_url, layer_name, minx, miny, maxx, maxy, 'my_patch.gpkg')

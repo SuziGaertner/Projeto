@@ -6,3 +6,5 @@ albumentations
 scikit-learn
 matplotlib
 lightning
+icecream
+segmentation_models_pytorch
